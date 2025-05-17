@@ -8,11 +8,21 @@ builder.Services.AddTransient<UserAuthenticationService>();
 
 var app = builder.Build();
 
-app.MapGet("/", (UserAuthenticationService userAuthenticationService) =>
+app.Use((context, next) =>
 {
-    var username = userAuthenticationService.GetUsername();
-    return username != null ? Results.Ok(username) : Results.NotFound();
+    var authenticationService = context.RequestServices.GetService<UserAuthenticationService>()
+                                ?? throw new ArgumentNullException(nameof(UserAuthenticationService));
+
+    var username = authenticationService.GetUsername();
+        context.Items["username"] = username;
+
+    return next(context);
 });
+
+app.MapGet("/",
+    (HttpContext httpContext) => httpContext.Items["username"] is string username
+        ? Results.Ok((object?)username)
+        : Results.NotFound());
 
 app.MapPost("/login/{username}", (
     string username,
