@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,13 +15,17 @@ app.Use((context, next) =>
                                 ?? throw new ArgumentNullException(nameof(UserAuthenticationService));
 
     var username = authenticationService.GetUsername();
-        context.Items["username"] = username;
+    var claims = new List<Claim>()
+        { new(ClaimTypes.Name, username)};
+    var claimsIdentity = new ClaimsIdentity(claims);
+        
+    context.User = new ClaimsPrincipal(claimsIdentity);
 
     return next(context);
 });
 
 app.MapGet("/",
-    (HttpContext httpContext) => httpContext.Items["username"] is string username
+    (HttpContext httpContext) => httpContext.User.Identity!.Name is { } username
         ? Results.Ok((object?)username)
         : Results.NotFound());
 
