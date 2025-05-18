@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Authentica
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.AuthenticationWithAuthorization", "src\IdentityProvider.AuthenticationWithAuthorization\IdentityProvider.AuthenticationWithAuthorization.csproj", "{87F79451-CF3A-4B10-AA03-D994C4978A80}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Identity", "src\IdentityProvider.Identity\IdentityProvider.Identity.csproj", "{EA1429D7-AD08-4536-B41B-4C1557804CCA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,10 +28,15 @@ Global
 		{87F79451-CF3A-4B10-AA03-D994C4978A80}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87F79451-CF3A-4B10-AA03-D994C4978A80}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87F79451-CF3A-4B10-AA03-D994C4978A80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA1429D7-AD08-4536-B41B-4C1557804CCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA1429D7-AD08-4536-B41B-4C1557804CCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA1429D7-AD08-4536-B41B-4C1557804CCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA1429D7-AD08-4536-B41B-4C1557804CCA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{986A51D4-6F4F-4B8D-9D37-152ACBB3A579} = {F7B55007-49D9-4048-8146-AE48F679F97A}
 		{BCE33E76-BD30-46FC-862E-EAD8AAFC9962} = {F7B55007-49D9-4048-8146-AE48F679F97A}
 		{87F79451-CF3A-4B10-AA03-D994C4978A80} = {F7B55007-49D9-4048-8146-AE48F679F97A}
+		{EA1429D7-AD08-4536-B41B-4C1557804CCA} = {F7B55007-49D9-4048-8146-AE48F679F97A}
 	EndGlobalSection
 EndGlobal
