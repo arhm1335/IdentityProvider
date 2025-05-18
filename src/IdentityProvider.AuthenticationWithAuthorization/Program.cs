@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,23 +18,22 @@ builder.Services.AddAuthentication("idp")
         options.HeaderName = "aut";
     });
 
+builder.Services.AddSingleton<IAuthorizationHandler, ApiKeyAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, CookieAuthorizationHandler>();
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("idp-policy", policy =>
     {
         policy.RequireAuthenticatedUser();
         policy.AddAuthenticationSchemes("idp");
-        policy.AddRequirements(new AssertionRequirement(a => a.User.Identities
-            .Any(i => i.AuthenticationType == "idp")
-        ));
+        policy.AddRequirements(new CookieAuthorizationRequirement());
     });
     options.AddPolicy("header-policy", policy =>
     {
         policy.RequireAuthenticatedUser();
         policy.AddAuthenticationSchemes("header");
-        policy.AddRequirements(new AssertionRequirement(a => a.User.Identities
-            .Any(i => i.AuthenticationType == "header")
-        ));
+        policy.AddRequirements(new ApiKeyAuthorizationRequirement());
     });
 });
 
@@ -116,3 +115,39 @@ public class HeaderHandler : AuthenticationHandler<HeaderOptions>
     {
     }
 }
+
+#region Authorization Handlers
+
+public class CookieAuthorizationRequirement : IAuthorizationRequirement
+{
+}
+
+public class CookieAuthorizationHandler : AuthorizationHandler<CookieAuthorizationRequirement>
+{
+    protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, CookieAuthorizationRequirement requirement)
+    {
+        if(context.User.Identities
+           .Any(i => i.AuthenticationType == "idp"))
+            context.Succeed(requirement);
+        else
+            context.Fail();
+    }
+}
+
+public class ApiKeyAuthorizationRequirement : IAuthorizationRequirement
+{
+}
+
+public class ApiKeyAuthorizationHandler : AuthorizationHandler<ApiKeyAuthorizationRequirement>
+{
+    protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, ApiKeyAuthorizationRequirement requirement)
+    {
+        if (context.User.Identities
+            .Any(i => i.AuthenticationType == "header"))
+            context.Succeed(requirement);
+        else
+            context.Fail();
+    }
+}
+
+#endregion
