@@ -1,28 +1,41 @@
 using System.Security.Claims;
-using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddAuthentication()
+builder.Services.AddAuthentication("idp")
     .AddCookie("idp", options =>
     {
         options.Cookie.Name = "idp";
-    })
-    .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
-        ApiKeyAuthenticationOptions.DefaultApiKeyAuthenticationScheme, options =>
-        {
-            options.HeaderName = "un";
-            options.ApiKeyValue = "arhm";
-        });
+    });
 
 var app = builder.Build();
 
 app.UseAuthentication();
 
+app.Use((context, next) =>
+{
+    if(context.GetEndpoint().Metadata.Any(a=>a is IAllowAnonymous))
+        return next(context);
+    
+    if (context.User.Identity?.IsAuthenticated != true)
+         context.Response.StatusCode = 401;
+
+    if (!context.User.HasClaim(ClaimTypes.Name, "arhm"))
+        context.Response.StatusCode = 401;
+    
+    return next(context);
+});
+
 app.MapGet("/", (HttpContext httpContext) =>
 {
+    if (httpContext.User.Identity?.IsAuthenticated != true)
+        return Results.Unauthorized();
+
+    if (!httpContext.User.HasClaim(ClaimTypes.Name, "arhm"))
+        return Results.Unauthorized();
+    
     var username = httpContext.User.Identity?.Name;
 
     return Results.Ok($"username: {username}");
@@ -38,47 +51,6 @@ app.MapPost("/login/{username}", async (
     await httpContext.SignInAsync("idp",userPrincipal);
 
     return Results.Ok("success login");
-});
+}).AllowAnonymous();
 
 app.Run();
-
-public class ApiKeyAuthenticationOptions : AuthenticationSchemeOptions
-{
-    public const string DefaultApiKeyAuthenticationScheme = "apikey";
-    public string HeaderName { get; set; } = "api-key";
-    public string ApiKeyValue { get; set; }
-}
-
-public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthenticationOptions>
-{
-    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
-    {
-        if (Request.Headers.TryGetValue(Options.HeaderName, out var username))
-        {
-            var apiKey = username;
-            if (apiKey != Options.ApiKeyValue)
-                return AuthenticateResult.Fail("Invalid API Key");
-
-            var claims = new List<Claim> { new(ClaimTypes.Name, username) };
-            var claimsIdentity =
-                new ClaimsIdentity(claims, ApiKeyAuthenticationOptions.DefaultApiKeyAuthenticationScheme);
-            var userPrincipal = new ClaimsPrincipal(claimsIdentity);
-
-            var ticket = new AuthenticationTicket(userPrincipal,
-                ApiKeyAuthenticationOptions.DefaultApiKeyAuthenticationScheme);
-            return AuthenticateResult.Success(ticket);
-        }
-
-        return AuthenticateResult.Fail("username not found in header");
-    }
-
-    public ApiKeyAuthenticationHandler(IOptionsMonitor<ApiKeyAuthenticationOptions> options, ILoggerFactory logger,
-        UrlEncoder encoder, ISystemClock clock) : base(options, logger, encoder, clock)
-    {
-    }
-
-    public ApiKeyAuthenticationHandler(IOptionsMonitor<ApiKeyAuthenticationOptions> options, ILoggerFactory logger,
-        UrlEncoder encoder) : base(options, logger, encoder)
-    {
-    }
-}
