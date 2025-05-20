@@ -4,9 +4,14 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.Xml;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHttpClient("token_provider",
+    options => { options.BaseAddress = new Uri(" https://localhost:7216"); });
+builder.Services.AddSingleton<TokenWrapper>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -27,17 +32,32 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents()
         {
-            OnMessageReceived = context =>
+            OnMessageReceived = async context =>
             {
-                if (context.Request.Headers.TryGetValue("token", out var token))
+                if (context.Request.Headers.ContainsKey("access-token"))
+                    return;
+                
+                if (!context.Request.Headers.TryGetValue("token", out var token))
+                    context.Fail("invalid token");
+
+                var httpFactory = context.HttpContext.RequestServices.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpFactory.CreateClient("token_provider");
+                httpClient.DefaultRequestHeaders.Add("access-token", [token]);
+
+                try
                 {
-                    context.Token = token;
-                    // context.Success();
-                    return Task.CompletedTask;
+                    var validateResult = await httpClient.GetAsync("/token-validation");
+                    validateResult.EnsureSuccessStatusCode();
+                    
+                    if (await validateResult.Content.ReadFromJsonAsync<bool>(CancellationToken.None) != true)
+                        context.Fail("token expired!");
+                }
+                catch
+                {
+                    context.Fail("invalid request");
                 }
 
-                context.Fail("invalid token");
-                return Task.CompletedTask;
+                context.Token = token;
             },
         };
     });
@@ -45,7 +65,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 var app = builder.Build();
 
 
-app.MapPost("/jwt-set", async (HttpContext context) =>
+app.MapPost("/jwt-set", async (HttpContext context, TokenWrapper tokenWrapper) =>
 {
     var rsaKey = RSA.Create();
 
@@ -54,31 +74,74 @@ app.MapPost("/jwt-set", async (HttpContext context) =>
 
     rsaKey.FromXmlString(KeyAuth.PrivateKey);
     var rsaKeySecurity = new RsaSecurityKey(rsaKey);
+    string username = "example-user";
 
     var claims = new[]
     {
-        new Claim("name", "example_user"),
+        new Claim("name", username),
         new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
     };
 
     var creds = new SigningCredentials(rsaKeySecurity, SecurityAlgorithms.RsaSha256);
-
+    var expier = DateTime.UtcNow.AddMinutes(30);
     var token = new JwtSecurityToken(
         issuer: builder.Configuration["Jwt:Issuer"],
         audience: builder.Configuration["Jwt:Audience"],
         claims: claims,
-        expires: DateTime.UtcNow.AddMinutes(30),
+        expires: expier,
         signingCredentials: creds);
 
     var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-
+    tokenWrapper.AddToken(username, tokenString, expier);
     await context.Response.WriteAsync(tokenString);
 });
 
+app.MapGet("/faire-user", (TokenWrapper tokenWrapper) =>
+{
+    tokenWrapper.RemoveToken("example-user");
+    return Results.Ok("User fired");
+});
+
+app.MapGet("/token-validation", ([FromHeader(Name = "access-token")] string token, TokenWrapper tokenWrapper) =>
+{
+    var result = tokenWrapper.CheckValidToken(token);
+    return Results.Ok(result);
+});
+
+//from another project (for example)
 app.MapGet("/jwt-get", (HttpContext context) => context.User.FindFirst("name")?.Value ?? "null");
 
-
 app.Run();
+
+public class TokenWrapper
+{
+    private readonly HashSet<UserToken> _userTokens = [];
+
+    public void AddToken(string username, string token, DateTime expires)
+    {
+        var tokenByte = Encoding.UTF8.GetBytes(token);
+        var hasToken = SHA256.HashData(tokenByte);
+        var tokenString = Convert.ToBase64String(hasToken);
+
+        _userTokens.Add(new UserToken(username, tokenString, expires));
+    }
+
+    public void RemoveToken(string username)
+    {
+        _userTokens.RemoveWhere(u => u.Username == username);
+    }
+
+    public bool CheckValidToken(string token)
+    {
+        var tokenByte = Encoding.UTF8.GetBytes(token);
+        var hasToken = SHA256.HashData(tokenByte);
+        var tokenString = Convert.ToBase64String(hasToken);
+
+        return _userTokens.Any(u => u.Token == tokenString);
+    }
+}
+
+public record UserToken(string Username, string Token, DateTime Expires);
 
 public static class KeyAuth
 {
@@ -89,6 +152,7 @@ public static class KeyAuth
         "<RSAKeyValue><Modulus>p03nX3cVjJGMt3W6POvIj1D2W8Mpj4mZNiZN66XnCfB61fhgbKQk6M09ZobJAaM/EYfJDaksDeFoXYmxW3nQDdMJthSxei8L0vM9VRZ255l3WwlLO5JViHxHVnbnmnHU4SCskw/aZSsHd4bEyPTBOjpq5MC+H5M6fqZ2MGCwAFKcp27de/X0J+/78OFPYyaPsDEbr24pgGAN977Y5h7uGwCwlj7Ov4vWoAdTt+igo0d91JgP4BSUpaiCAo72oq9oc/BG1v6al+maqWH0qcXNzlhq016I8ipTWV7ZF3FKdFAiV+REbvqMoD/2G6/o8LB5Y9S5tHcZWo8QToe9EP41rQ==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
 
     public static string PrivateKey => _privateKey;
+
     public static RSACryptoServiceProvider ReadAuthPublicKey()
     {
         var rsa = new RSACryptoServiceProvider();
