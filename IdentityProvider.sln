@@ -10,7 +10,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Authentica
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Identity", "src\IdentityProvider.Identity\IdentityProvider.Identity.csproj", "{EA1429D7-AD08-4536-B41B-4C1557804CCA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Jwt", "src\IdentityProvider.Jwt\IdentityProvider.Jwt.csproj", "{52E87BD1-A23E-4DBF-8ACA-640762DBB698}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Jwt.Symmetric", "src\IdentityProvider.Jwt.Symmetric\IdentityProvider.Jwt.Symmetric.csproj", "{52E87BD1-A23E-4DBF-8ACA-640762DBB698}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
