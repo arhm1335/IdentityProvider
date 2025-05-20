@@ -12,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpClient("token_provider",
     options => { options.BaseAddress = new Uri(" https://localhost:7216"); });
 builder.Services.AddSingleton<TokenWrapper>();
+builder.Services.AddHostedService<TokenCleanUpBackgroundService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -83,7 +84,7 @@ app.MapPost("/jwt-set", async (HttpContext context, TokenWrapper tokenWrapper) =
     };
 
     var creds = new SigningCredentials(rsaKeySecurity, SecurityAlgorithms.RsaSha256);
-    var expier = DateTime.UtcNow.AddMinutes(30);
+    var expier = DateTime.UtcNow.Add(TokenWrapper.Expiry);
     var token = new JwtSecurityToken(
         issuer: builder.Configuration["Jwt:Issuer"],
         audience: builder.Configuration["Jwt:Audience"],
@@ -115,6 +116,7 @@ app.Run();
 
 public class TokenWrapper
 {
+    public static readonly TimeSpan Expiry = TimeSpan.FromHours(2);
     private readonly HashSet<UserToken> _userTokens = [];
 
     public void AddToken(string username, string token, DateTime expires)
@@ -139,6 +141,12 @@ public class TokenWrapper
 
         return _userTokens.Any(u => u.Token == tokenString);
     }
+
+    public void CleanUp()
+    {
+        var now = DateTime.UtcNow;
+        _userTokens.RemoveWhere(u => u.Expires < now);
+    }
 }
 
 public record UserToken(string Username, string Token, DateTime Expires);
@@ -158,5 +166,17 @@ public static class KeyAuth
         var rsa = new RSACryptoServiceProvider();
         rsa.FromXmlString(_publicKey);
         return rsa;
+    }
+}
+
+public class TokenCleanUpBackgroundService(TokenWrapper tokenWrapper): BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            tokenWrapper.CleanUp();
+            await Task.Delay(TokenWrapper.Expiry, stoppingToken);
+        }
     }
 }
