@@ -14,7 +14,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Jwt.Symmet
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Jwt.Asymmetric", "src\IdentityProvider.Jwt.Asymmetric\IdentityProvider.Jwt.Asymmetric.csproj", "{2C14E048-6511-4F20-AB27-11CAC8014ADF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.OAut", "src\IdentityProvider.OAut\IdentityProvider.OAut.csproj", "{BEE31D5C-AF44-4867-9488-F2F55E1C612A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.OAuth", "src\IdentityProvider.OAuth\IdentityProvider.OAuth.csproj", "{BEE31D5C-AF44-4867-9488-F2F55E1C612A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "IdentityPrd", "IdentityPrd", "{AD226481-D0F4-4669-9A37-6C8BC8A1F66E}"
 EndProject
