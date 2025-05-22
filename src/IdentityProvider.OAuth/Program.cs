@@ -26,7 +26,7 @@ builder.Services.AddAuthentication(AuthenticationScheme.Cookie)
         options.AuthorizationEndpoint = "https://github.com/login/oauth/authorize";
         options.TokenEndpoint = "https://github.com/login/oauth/access_token";
         options.UserInformationEndpoint = "https://api.github.com/user";
-        options.CallbackPath = "/dashboard2";
+        options.CallbackPath = "/callback";
         
         options.SaveTokens = true;
         
@@ -60,11 +60,6 @@ app.UseAuthentication();
 app.MapGet("/login-github", ([FromQuery(Name = "returnUrl")] string? returnUrl) =>
 Results.Challenge(new OAuthChallengeProperties()
     { RedirectUri = returnUrl ?? "/dashboard"}, [AuthenticationScheme.GitHub]));
-
-app.MapGet("/dashboard", (HttpContext context) =>
-{ 
-   
-});
 
 app.MapGet("/user-data", (HttpContext context) =>
 {
